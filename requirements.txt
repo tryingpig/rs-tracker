@@ -1,4 +1,4 @@
-pykrx>=1.0.45
+pykrx>=1.2.8
 yfinance>=0.2.40
 pandas>=2.0
 numpy>=1.24

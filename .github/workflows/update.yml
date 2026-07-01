@@ -19,6 +19,9 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: build data
+        env:
+          KRX_ID: ${{ secrets.KRX_ID }}   # data.krx.co.kr(KRX 정보데이터시스템) 회원 ID
+          KRX_PW: ${{ secrets.KRX_PW }}   # 지수·구성종목 조회에 로그인 필요(pykrx 1.2.8+)
         run: python scripts/build_json.py
       - name: commit data
         run: |
@@ -40,6 +43,9 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: refresh sectors (1st business day only)
+        env:
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PW: ${{ secrets.KRX_PW }}
         run: |
           if [ "$(date -u +%d)" -le "03" ]; then
             python scripts/build_json.py --refresh-sectors
