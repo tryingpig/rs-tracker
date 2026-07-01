@@ -1,0 +1,53 @@
+name: update-rs-data
+on:
+  schedule:
+    - cron: '30 9 * * 1-5'      # 18:30 KST (09:30 UTC), 평일
+  workflow_dispatch:            # 수동 실행(파이프라인 검증용)
+permissions:
+  contents: write
+concurrency:
+  group: update-rs-data
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: build data
+        run: python scripts/build_json.py
+      - name: commit data
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/
+          git diff --staged --quiet || git commit -m "data: update $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push
+
+  # 섹터 캐시는 자주 안 바뀌므로 월 1회만 강제 갱신
+  refresh-sectors:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: refresh sectors (1st business day only)
+        run: |
+          if [ "$(date -u +%d)" -le "03" ]; then
+            python scripts/build_json.py --refresh-sectors
+            git config user.name "github-actions"
+            git config user.email "actions@github.com"
+            git add data/
+            git diff --staged --quiet || git commit -m "sectors: monthly refresh"
+            git push
+          else
+            echo "이번 실행은 섹터 갱신 대상 아님(매월 초 3일 이내만)."
+          fi
