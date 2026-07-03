@@ -32,7 +32,9 @@ jobs:
           git push
 
   # 섹터 캐시는 자주 안 바뀌므로 월 1회만 강제 갱신
+  # needs: build → build 완료(push) 후 실행해 동시 push 충돌(race) 방지
   refresh-sectors:
+    needs: build
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
