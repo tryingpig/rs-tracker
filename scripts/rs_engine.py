@@ -12,7 +12,7 @@
 """
 import numpy as np
 import pandas as pd
-from config import RS_WEIGHTS, W_WEEK, W_MONTH, FF_WINDOW, WEEKS_WIN, UNKNOWN_SECTOR
+from config import RS_WEIGHTS, W_DAY, W_WEEK, W_MONTH, FF_WINDOW, WEEKS_WIN, UNKNOWN_SECTOR
 
 
 def _ret(series, n):
@@ -27,16 +27,16 @@ def compute(closes_df, index_close, sectors, foreign_df):
     closes_df = closes_df.sort_index()
     bench = index_close.sort_index().reindex(closes_df.index).ffill()
 
-    bench_ret = {n: _ret(bench, n) for n in (5, 21, 63, 126)}
+    bench_ret = {n: _ret(bench, n) for n in (1, 5, 21, 63, 126)}
 
     # 종목별 트레일링 수익률
     recs = {}
     for t in closes_df.columns:
         s = closes_df[t]
-        r = {n: _ret(s, n) for n in (5, 21, 63, 126)}
+        r = {n: _ret(s, n) for n in (1, 5, 21, 63, 126)}
         if any(pd.isna(v) for v in r.values()):
             continue
-        rel = {n: r[n] - bench_ret[n] for n in (5, 21, 63, 126)}
+        rel = {n: r[n] - bench_ret[n] for n in (1, 5, 21, 63, 126)}
         score = sum(RS_WEIGHTS[n] * rel[n] for n in RS_WEIGHTS)
         recs[t] = {"ret": r, "rel": rel, "score": score}
 
@@ -51,7 +51,7 @@ def compute(closes_df, index_close, sectors, foreign_df):
     # 섹터 그룹 & 섹터 평균수익(윈도우별)
     sec_of = pd.Series({t: sectors.get(t, UNKNOWN_SECTOR) for t in valid})
     sec_mean = {}
-    for n in (W_WEEK, W_MONTH):
+    for n in (W_DAY, W_WEEK, W_MONTH):
         rr = pd.Series({t: recs[t]["ret"][n] for t in valid})
         sec_mean[n] = rr.groupby(sec_of).mean()
 
@@ -85,6 +85,7 @@ def compute(closes_df, index_close, sectors, foreign_df):
     for t in valid:
         r = recs[t]
         sec = sec_of[t]
+        dSec = (r["ret"][W_DAY] - sec_mean[W_DAY].get(sec, 0.0)) * 100
         wSec = (r["ret"][W_WEEK] - sec_mean[W_WEEK].get(sec, 0.0)) * 100
         mSec = (r["ret"][W_MONTH] - sec_mean[W_MONTH].get(sec, 0.0)) * 100
         col = wk_ratio[t].dropna()
@@ -94,8 +95,10 @@ def compute(closes_df, index_close, sectors, foreign_df):
             "code": t,
             "sec": sec,
             "rs": int(round(pct[t] * 98)) + 1,
+            "dMkt": round(r["rel"][W_DAY] * 100, 1),
             "wMkt": round(r["rel"][W_WEEK] * 100, 1),
             "mMkt": round(r["rel"][W_MONTH] * 100, 1),
+            "dSec": round(dSec, 1),
             "wSec": round(wSec, 1),
             "mSec": round(mSec, 1),
             "win": win.get(t, 0),
@@ -120,6 +123,7 @@ def _bench_summary(bench, bench_ret):
     b = bench.dropna()
     return {
         "close": round(float(b.iloc[-1]), 2) if len(b) else None,
+        "retD": round((bench_ret[1] or 0) * 100, 1),
         "retW": round((bench_ret[5] or 0) * 100, 1),
         "retM": round((bench_ret[21] or 0) * 100, 1),
     }

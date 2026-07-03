@@ -12,7 +12,8 @@ YF_SUFFIX = {"kospi": ".KS", "kosdaq": ".KQ"}
 HISTORY_DAYS = 300
 
 # 트레일링 윈도우(거래일). 요일과 무관하게 오늘부터 거꾸로 센 구간.
-W_WEEK, W_MONTH, W_3M, W_6M = 5, 21, 63, 126
+# W_DAY=1(일간)은 표시용 지표(일간초과)일 뿐, RS 점수 가중(RS_WEIGHTS)에는 포함하지 않는다.
+W_DAY, W_WEEK, W_MONTH, W_3M, W_6M = 1, 5, 21, 63, 126
 RS_WEIGHTS = {5: 0.15, 21: 0.40, 63: 0.30, 126: 0.15}
 
 FF_WINDOW = 20        # 외국인 지분율 변화 측정 구간(거래일)

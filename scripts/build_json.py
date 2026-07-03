@@ -50,6 +50,7 @@ def build_market(market, refresh_sectors=False):
             "name": BENCH_NAME[market],
             "code": INDEX_CODE[market],
             "close": bench["close"],
+            "retD": bench["retD"],
             "retW": bench["retW"],
             "retM": bench["retM"],
         },

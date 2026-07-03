@@ -20,20 +20,20 @@
 ```json
 {
   "market":"kospi","label":"KOSPI200",
-  "benchmark":{"name":"코스피200","code":"1028","close":352.4,"retW":2.1,"retM":5.4},
+  "benchmark":{"name":"코스피200","code":"1028","close":352.4,"retD":0.4,"retW":2.1,"retM":5.4},
   "updated_at":"2026-07-01 18:30","universe_count":200,"unknown_sectors":[],
   "stocks":[{"nm":"SK하이닉스","code":"000660","sec":"정보기술","rs":94,
-    "wMkt":4.2,"wSec":3.6,"mMkt":42.5,"mSec":14.2,"win":10,"srank":"1/18","ff":1.4,"spark":[100,...]}]
+    "dMkt":0.8,"wMkt":4.2,"mMkt":42.5,"dSec":0.5,"wSec":3.6,"mSec":14.2,"win":10,"srank":"1/18","ff":1.4,"spark":[100,...]}]
 }
 ```
 `benchmark.retW/retM`=지수 자체의 주간/월간 수익률(초과수익의 기준, 헤더에 표시).
 프론트는 tiles·이긴종목수를 stocks에서 기간별로 계산.
 
 ## 5. RS 엔진 규칙 (rs_engine.py)
-윈도우(트레일링 거래일): 주=5, 월=21, 3M=63, 6M=126. `ret(s,n)=s[-1]/s[-1-n]-1`, `rel_n=ret(종목)-ret(지수)`.
-- RS점수 = 0.15·rel_5 + 0.40·rel_21 + 0.30·rel_63 + 0.15·rel_126 → 유니버스 퍼센타일 1~99(`rs`).
-- 주간초과 `wMkt`=rel_5·100, 월간초과 `mMkt`=rel_21·100.
-- 섹터초과 `wSec/mSec` = 종목수익 − 같은 섹터 평균수익. `srank` = 섹터 내 RS점수 순위.
+윈도우(트레일링 거래일): 일=1, 주=5, 월=21, 3M=63, 6M=126. `ret(s,n)=s[-1]/s[-1-n]-1`, `rel_n=ret(종목)-ret(지수)`.
+- RS점수 = 0.15·rel_5 + 0.40·rel_21 + 0.30·rel_63 + 0.15·rel_126 → 유니버스 퍼센타일 1~99(`rs`). (일간 rel_1은 표시용, 점수 미포함)
+- 일간초과 `dMkt`=rel_1·100, 주간초과 `wMkt`=rel_5·100, 월간초과 `mMkt`=rel_21·100. (지수 자체 수익률 `retD/retW/retM`은 헤더 기준선)
+- 섹터초과 `dSec/wSec/mSec` = 종목수익 − 같은 섹터 평균수익(각 1/5/21일). `srank` = 섹터 내 RS점수 순위.
 - 이긴 주 `win` = 최근 12개 완결주(W-FRI)에서 종목 주간수익 > 지수 주간수익 수.
 - `spark` = (종목/지수) 비율선 최근 12주, 시작=100. `ff` = 외국인 지분율 최근 20거래일 변화(%p).
 - 판정(프론트): wMkt·wSec(또는 mMkt·mSec) 부호 → 진짜대장/시장우위/섹터우위/약세.

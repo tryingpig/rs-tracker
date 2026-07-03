@@ -170,6 +170,7 @@
 
 <div class="controls">
   <div class="seg" id="period">
+    <button data-p="d">일간</button>
     <button data-p="w" class="on">주간</button>
     <button data-p="m">월간</button>
   </div>
@@ -202,7 +203,7 @@
   <ol style="margin:0;padding-left:18px;font-size:12.5px;line-height:1.9;color:var(--muted)">
     <li><b style="color:var(--ink)">RS %</b> — 유니버스 안에서 상대강도 상위 몇 %인가 (높을수록 강함)</li>
     <li><b style="color:var(--ink)">추세선</b> — RS 비율선. 우상향이면 아웃퍼폼 지속</li>
-    <li><b style="color:var(--ink)">주간·월간 초과</b> — 벤치(지수) 대비 초과수익. <b style="color:var(--ink)">기준: 최근 5거래일(주간)·21거래일(월간) 트레일링</b> — 요일과 무관하게 오늘부터 거꾸로 센 이동 구간이라 "주 초부터 며칠치"로 흔들리지 않습니다.</li>
+    <li><b style="color:var(--ink)">일간·주간·월간 초과</b> — 벤치(지수) 대비 초과수익. <b style="color:var(--ink)">기준: 최근 1거래일(일간)·5거래일(주간)·21거래일(월간) 트레일링</b> — 요일과 무관하게 오늘부터 거꾸로 센 이동 구간이라 "주 초부터 며칠치"로 흔들리지 않습니다. (일간은 표시용이며 RS 점수에는 미포함)</li>
     <li><b style="color:var(--ink)">이긴 주</b> — 완결된 최근 12주(월~금) 중 종목 주간수익이 지수를 이긴 주 수</li>
     <li><b style="color:var(--ink)">섹터 순위</b> — 같은 섹터 안 RS 순위 (대장 여부)</li>
     <li><b style="color:var(--ink)">외국인</b> — 최근 20거래일 지분율 변화(%p)</li>
@@ -290,12 +291,14 @@ function renderTiles(key){
 
 function render(){
   if(!M) return;
-  const key=period==='w'?['wMkt','wSec']:['mMkt','mSec'];
-  document.getElementById('th-excess').textContent=period==='w'?'주간초과':'월간초과';
+  const PK={d:['dMkt','dSec'],w:['wMkt','wSec'],m:['mMkt','mSec']};
+  const PL={d:'일간',w:'주간',m:'월간'};
+  const key=PK[period]||PK.w;
+  document.getElementById('th-excess').textContent=PL[period]+'초과';
   // benchmark chip: 선택 기간의 지수 자체 수익률(초과수익의 기준)
-  const bRet=period==='w'?M.benchmark.retW:M.benchmark.retM;
+  const bRet=(period==='d'?M.benchmark.retD:period==='w'?M.benchmark.retW:M.benchmark.retM)??0;
   const bUp=bRet>=0;
-  document.getElementById('benchK').textContent=M.label+' 지수 · '+(period==='w'?'주간':'월간');
+  document.getElementById('benchK').textContent=M.label+' 지수 · '+PL[period];
   const bv=document.getElementById('benchV');
   bv.className='v '+(bUp?'up':'down');
   bv.innerHTML=(M.benchmark.close!=null?M.benchmark.close.toLocaleString():'-')+' <span style="font-size:12px">('+(bUp?'+':'')+bRet.toFixed(1)+'%)</span>';
@@ -307,7 +310,7 @@ function render(){
   if(verdictFilter!=='all') list=list.filter(d=>verdict(d[key[0]],d[key[1]]).k===verdictFilter);
   list=list.slice().sort((a,b)=>b.rs-a.rs);
   const rows=list.map((d,i)=>{
-    const mkt=d[key[0]], sec=d[key[1]], v=verdict(mkt,sec), ffUp=d.ff>=0;
+    const mkt=d[key[0]]??0, sec=d[key[1]]??0, v=verdict(mkt,sec), ffUp=d.ff>=0;
     return '<tr class="'+(v.k==='lead'?'lead-row':'')+'">'+
       '<td class="l rank">'+(i+1)+'</td>'+
       '<td class="l nm">'+d.nm+'<span class="code">'+d.code+'</span></td>'+
@@ -327,7 +330,7 @@ function render(){
 
 function drawQuad(list, key){
   const W=520,H=340,pad=34,cx=W/2,cy=H/2;
-  const xs=list.map(d=>d[key[0]]), ys=list.map(d=>d[key[1]]);
+  const xs=list.map(d=>d[key[0]]??0), ys=list.map(d=>d[key[1]]??0);
   const xmax=Math.max(10,...xs.map(Math.abs)), ymax=Math.max(8,...ys.map(Math.abs));
   const X=v=>cx+(v/xmax)*(W/2-pad), Y=v=>cy-(v/ymax)*(H/2-pad);
   let s='';
@@ -338,7 +341,7 @@ function drawQuad(list, key){
   s+='<text x="'+(cx+6)+'" y="'+(pad+2)+'" fill="var(--muted)" font-size="10">▲ 섹터 대비</text>';
   s+='<text x="'+(W-pad-4)+'" y="'+(pad+2)+'" fill="var(--v-lead)" font-size="10" text-anchor="end" font-weight="600">진짜 대장</text>';
   list.forEach(d=>{
-    const mkt=d[key[0]], sec=d[key[1]];
+    const mkt=d[key[0]]??0, sec=d[key[1]]??0;
     const col=(mkt>0&&sec>0)?'var(--v-lead)':(mkt>0)?'var(--v-mkt)':(sec>0)?'var(--v-sec)':'var(--v-weak)';
     const r=3.2+d.rs/28;
     s+='<circle cx="'+X(mkt).toFixed(1)+'" cy="'+Y(sec).toFixed(1)+'" r="'+r.toFixed(1)+'" fill="'+col+'" fill-opacity="0.85" stroke="var(--bg)" stroke-width="0.8"/>';
