@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Notion 'ETF Sector DB' → data/sector_override.csv 생성 (rs-tracker 전용).
+"""Notion 'RS 섹터 보정 DB' → data/sector_override.csv 생성 (rs-tracker 전용).
 
 섹터 자동분류(yfinance GICS)가 비우거나 틀린 종목을 손으로 교정하는 override를
-Notion DB에서 받아 data/sector_override.csv(code,sec)로 쓴다. build_json.py가
+전용 Notion DB에서 받아 data/sector_override.csv(code,sec)로 쓴다. build_json.py가
 섹터 분류 시 이 CSV를 최우선으로 읽는다(scripts/sectors.py).
 
-- 대상: 프로젝트=rs-tracker, 역할=sector-override, 활성=True 행.
-- code = 티커코드에서 '.KS/.KQ' 접미사 제거한 순수 종목코드, sec = 이름(섹터명).
+- DB 스키마: 이름(종목명, 참고용) · 종목코드(6자리) · 섹터(GICS 11 택1) · 활성(체크).
+- 대상: 활성=True 행. code=종목코드, sec=섹터.
 - 토큰: 환경변수 NOTION_TOKEN (Actions Secret).
 - Notion 조회 실패 시: 기존 CSV가 있으면 유지(폴백), 없으면 헤더만이라도 생성.
 """
@@ -20,7 +20,7 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
-DB_ID = "393ebba0843a80148f6cf99d09012bcc"
+DB_ID = "393ebba0843a80489747d6d5a651f6d6"  # RS 섹터 보정 DB(rs-tracker 전용, ETF Sector DB와 별도)
 BASE = "https://api.notion.com/v1"
 OUT = Path(__file__).resolve().parent.parent / "data" / "sector_override.csv"
 
@@ -55,12 +55,10 @@ def fetch_overrides(token):
         res = api("POST", f"/databases/{DB_ID}/query", token, payload)
         for r in res["results"]:
             p = r["properties"]
-            role = (p.get("역할", {}).get("select") or {}).get("name", "")
-            projects = [o["name"] for o in p.get("프로젝트", {}).get("multi_select", [])]
             active = p.get("활성", {}).get("checkbox", False)
-            if active and "rs-tracker" in projects and role == "sector-override":
-                code = _rt(p.get("티커코드")).split(".")[0].strip()
-                sec = _rt(p.get("이름"))
+            if active:
+                code = _rt(p.get("종목코드")).split(".")[0].strip()
+                sec = (p.get("섹터", {}).get("select") or {}).get("name", "").strip()
                 if code and sec:
                     rows.append((code, sec))
         if not res.get("has_more"):
