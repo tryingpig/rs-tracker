@@ -18,6 +18,11 @@ jobs:
           python-version: '3.11'
           cache: pip
       - run: pip install -r requirements.txt
+      # Notion 'ETF Sector DB' → data/sector_override.csv (섹터 교정값 최신 반영)
+      - name: Sync sector override from Notion
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: python scripts/sync_from_notion.py
       - name: build data
         env:
           KRX_ID: ${{ secrets.KRX_ID }}   # data.krx.co.kr(KRX 정보데이터시스템) 회원 ID
