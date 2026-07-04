@@ -18,7 +18,7 @@ jobs:
           python-version: '3.11'
           cache: pip
       - run: pip install -r requirements.txt
-      # Notion 'ETF Sector DB' → data/sector_override.csv (섹터 교정값 최신 반영)
+      # Notion 'RS 섹터 보정 DB' → data/sector_override.csv (섹터 교정값 최신 반영)
       - name: Sync sector override from Notion
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
@@ -28,6 +28,11 @@ jobs:
           KRX_ID: ${{ secrets.KRX_ID }}   # data.krx.co.kr(KRX 정보데이터시스템) 회원 ID
           KRX_PW: ${{ secrets.KRX_PW }}   # 지수·구성종목 조회에 로그인 필요(pykrx 1.2.8+)
         run: python scripts/build_json.py
+      # 새로 생긴 '기타' 종목을 RS 섹터 보정 DB에 자동 추가(섹터 미지정·활성 OFF)
+      - name: Push new unknown-sector stocks to Notion
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: python scripts/push_unknown_to_notion.py
       - name: commit data
         run: |
           git config user.name "github-actions"
