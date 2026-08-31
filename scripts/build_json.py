@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import tempfile
+import traceback
 from datetime import datetime
 
 from config import (DATA_DIR, OUT_JSON, BENCH_NAME, MARKET_LABEL, INDEX_CODE)
@@ -59,20 +60,24 @@ def build_market(market, refresh_sectors=False):
         "unknown_sectors": unknown,
         "stocks": stocks,
     }
-    _atomic_write(OUT_JSON.format(market=market), payload)
+    if not payload["benchmark"]["close"]:
+        raise RuntimeError(f"{market}: 벤치마크 종가 결측 — 지수 조회 실패로 판단")
+    if not _atomic_write(OUT_JSON.format(market=market), payload):
+        raise RuntimeError(f"{market}: 기록할 종목이 0개")
     print(f"=== {market} 완료: {len(stocks)}종목 기록 ===")
 
 
 def _atomic_write(path, payload):
-    """검증 통과분만 원자적으로 교체(부분 실패 시 기존 JSON 유지)."""
+    """검증 통과분만 원자적으로 교체(부분 실패 시 기존 JSON 유지). 기록했으면 True."""
     if not payload["stocks"]:
         print(f"[경고] {path}: 종목 0개 → 기존 파일 유지, 쓰지 않음")
-        return
+        return False
     os.makedirs(os.path.dirname(path), exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), suffix=".tmp")
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
     os.replace(tmp, path)
+    return True
 
 
 def main():
@@ -80,11 +85,20 @@ def main():
     refresh = "--refresh-sectors" in args
     args = [a for a in args if not a.startswith("--")]
     markets = args if args else ["kospi", "kosdaq"]
+    # 한 시장이 죽어도 나머지는 만들되, 하나라도 실패하면 종료코드 1로 알린다.
+    # 예전엔 여기서 예외를 삼켜 데이터가 안 만들어져도 Actions 가 green 이었고
+    # (커밋만 조용히 스킵), 그래서 갱신이 멈춘 걸 며칠간 아무도 몰랐다.
+    failed = []
     for mk in markets:
         try:
             build_market(mk, refresh_sectors=refresh)
         except Exception as e:
+            failed.append(mk)
             print(f"[에러] {mk} 실패: {e}")
+            traceback.print_exc()
+    if failed:
+        print(f"[실패] 생성하지 못한 시장: {', '.join(failed)}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
