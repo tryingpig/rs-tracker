@@ -53,6 +53,7 @@ jobs:
           git config user.email "actions@github.com"
           git add data/
           git diff --staged --quiet || git commit -m "data: update $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase origin main   # 다른 실행과 겹쳐도 밀리지 않게
           git push
 
   # 섹터 캐시는 자주 안 바뀌므로 월 1회만 강제 갱신
@@ -79,6 +80,10 @@ jobs:
             git config user.email "actions@github.com"
             git add data/
             git diff --staged --quiet || git commit -m "sectors: monthly refresh"
+            # 이 잡은 워크플로 '시작 시점' 커밋을 체크아웃하므로, 그 사이 build 가
+            # 밀어올린 data 커밋을 모르는 상태다. 그대로 push 하면 rejected 로
+            # 잡이 빨갛게 뜬다(매달 1~3일에만 도는 잡이라 그때만 재현).
+            git pull --rebase origin main
             git push
           else
             echo "이번 실행은 섹터 갱신 대상 아님(매월 초 3일 이내만)."
