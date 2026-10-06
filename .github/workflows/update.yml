@@ -30,6 +30,12 @@ jobs:
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         run: python scripts/sync_from_notion.py
+      # KRX 가 주기적으로 '비밀번호 변경 필요(CD010)'로 로그인을 막는다 → 90일 연장
+      - name: Postpone KRX password change
+        env:
+          KRX_ID: ${{ secrets.KRX_ID }}
+          KRX_PW: ${{ secrets.KRX_PW }}
+        run: python scripts/krx_postpone_pw.py
       - name: build data
         env:
           KRX_ID: ${{ secrets.KRX_ID }}   # data.krx.co.kr(KRX 정보데이터시스템) 회원 ID
